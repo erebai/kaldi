@@ -1,0 +1,129 @@
+scripts:
+
+tree-info exp/.../tree
+
+
+recipe/
+************** Main file: conventional training algorithms + SGMM + DNN *************** 
+run.sh: prepare data (data_prep.sh) + language model
+	train standard models (mono, triphone, triphone + LDA + MLLT, MMI/MPE discriminative training, SAT+FMLLR)
+	train SGMM model
+	train DNN models: nnet1, nnet2
+	train with Autoencoder + BN-NN
+
+************** Data Augmentation script: train DNN models based on modified data **************
+run_data_aug.sh: prepare data (local/data_aug.sh)
+		 alignments of the modified data {pitch, speed, vtlp, etc.} are regenerated using the GMM-HMM system (tri2b / tri4a).
+		 train DNN model
+
+
+************** Models' combination ****************
+lda.sh: train LDA model on nnets' outputs. functions: paste-feats, matrix-sum
+	in progress
+
+
+************** MFCC perturbation: add a random values to the extracted MFCC features **************
+run_mfcc_perturb.sh: prepare data (data_mfcc.sh)
+		     alignments of the mfcc modified data are regenerated using the GMM-HMM system (tri4a).
+		     train DNN model
+
+
+
+recipe/local/combine
+
+*************** Combination method: combine multiple models decode ********************
+run_combine.sh: combine the decoders of several models
+
+
+*************** Combination method: build a deep architecture using the outputs of multiple DNNs ************ 
+run_combine_nnet2_dnn.sh: get nnets' outputs (train_nnet.sh)
+	     train a nnet using outputs as input (instead of using mfcc features)
+
+Architecture:
+
+========
+=      =
+= DNN  = ==> Outputs   -------
+=      =                     |
+========                     |
+                             |
+========                     |
+=      =                     |
+= DNN  = ==> Outputs   ------|                                       ========
+=      =                     |      =========================        =      =
+========                     |  =>  =      Combination      =   =>   = DNN  = ==> Outputs
+                             |  =>  =  (stack/sum/avg/LDA)  =   =>   =      =
+                             |      =========================        ========
+........ ==> Outputs   ------| 
+                             |
+                             |
+                             |
+========                     |
+=      =                     |
+= DNN  = ==> Outputs   -------
+=      =
+========
+
+
+*************** Combination method: build a sequential architecture ************ 
+run_sequence_dnn_pnorm.sh: It is based on the same principle as the previous method, juste we use here a single dnn as input.
+			   The second neural network uses pnorm as activation function.
+
+run_sequence_dnn_tanh.sh:  The second neural network uses tanh as activation function.
+
+
+local/nnet, local/nnet2
+*************** DNN scripts: based on the implementation of Karel ********************
+run_dnn.sh: train a deep neural network. 
+
+run_dbn.sh: train a deep Boltzmann Machine. It's based on the implementation of Karel.
+
+local/nnet2
+*************** DNN scripts: based on the implementation of Daniel ********************
+run_dnn_pnorm.sh: train a deep neural network using the script steps/nnet2/train_pnorm_fast.sh
+
+run_dnn_tanh.sh: train a deep neural network using the script steps/nnet2/train_tanh_fast.sh
+
+train.sh: train a deep neural network using a defined activation function throught the variable "--activation-function" that accepts <Tanh|Sigmoid|RectifiedLinear>. This script could replace the script steps/nnet2/train_tanh_fast.sh
+
+train_cnn.sh: train a deep convolution neural network.
+
+
+
+local/features
+******************* Feature preparation and transformation ****************
+run_autoencoder: Train an autoencoder on the fmllr features.
+
+make_feats.sh: Combine MFCC, PLP, and Fbank features during the extraction process
+
+make_mfcc_fbank.sh: Combine MFCC and Fbank features during the extraction process
+
+add-random-values: perturbe the precomputed MFCC features. 
+		   Use a random matrix and add it to the original matrix.
+		   This function is used with the script "local/data_mfcc.sh"
+
+compute-mfcc-feats: extract and perturbe the MFCC features in one process.
+
+
+local/g2p
+********************** Grapheme To Pheneme *****************************
+train_g2p.sh: Trains Sequitur G2P models on lexicon. 
+              The model is used next to generate the transcription of out-of-vocabulary words.
+
+
+
+local
+************************ Main scripts for data preparation and language model training ***************
+data_prep.sh: The script will create automatiqually kaldi files: text, wav.scp, utt2spk, utt2dur, spk2utt
+
+data_mfcc.sh: The script will create automatiqually kaldi files. It is used mainly with the script "run_mfcc_perturb.sh"
+
+data_aug.sh: The script will create automatiqually kaldi files. It is used mainly with the script "run_data_aug.sh"
+
+file_prepare.py, french_twt.pl: they are used with the script data_prep.sh
+
+dic_prep.sh: This script will prepare the OOV words, generate the OOV pronunciation, and create a full lexicon file
+	     In addition, it prepares other necessery kaldi files.
+
+lm_prep.sh: Train a language model. Several methode is defined for this purpose.	
+ 
