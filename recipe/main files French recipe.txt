@@ -4,7 +4,9 @@ tree-info exp/.../tree
 
 
 recipe/
-************** Main file: conventional training algorithms + SGMM + DNN *************** 
+************** Main file: conventional training algorithms + SGMM + DNN ***************
+run_conf.sh : train and evaluate french model. This script includes a global configuration section.
+ 
 run.sh: prepare data (data_prep.sh) + language model
 	train standard models (mono, triphone, triphone + LDA + MLLT, MMI/MPE discriminative training, SAT+FMLLR)
 	train SGMM model
