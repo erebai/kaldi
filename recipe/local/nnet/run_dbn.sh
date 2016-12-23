@@ -3,7 +3,7 @@
 # Copyright (C) 2016, Linagora, Ilyes Rebai
 
 # Begin configuration section.
-stage_dbn=2
+stage_dbn=0
 # End configuration section.
 
 
@@ -11,15 +11,14 @@ if [ $stage_dbn -le 0 ]; then
   # Store fMLLR features
 
   # train
-  dir=
   steps/nnet/make_fmllr_feats.sh --nj $train_nj \
      --transform-dir $exp_dir/tri4a_ali \
-     $dir data/train $exp_dir/tri4a $data_fmllr/train/{log,data} || exit 1
+     $data_fmllr/train data/train $exp_dir/tri4a $data_fmllr/train/{log,data} || exit 1
 
   for data in $data_decode; do
     steps/nnet/make_fmllr_feats.sh --nj $decode_nj \
-      --transform-dir $exp_dir/tri4a/decode_dev_KALDI \
-      $dir data/dev $exp_dir/tri4a $data_fmllr/$data/{log,data}
+      --transform-dir $exp_dir/tri4a/decode_dev_IRSTLM \
+      $data_fmllr/$data data/$data $exp_dir/tri4a $data_fmllr/$data/{log,data}
   done
 
   # split the data if data/dev is not specified : 90% train 10% cross-validation (held-out)
@@ -28,23 +27,26 @@ fi
 
 if [ $stage_dbn -le 1 ]; then
   # Pre-train DBN, i.e. a stack of RBMs
-  steps/nnet/pretrain_dbn.sh --rbm-iter 1 --nn-depth $depth $data_fmllr/train $exp_dir/nnet/pretrain-${depth}dbn || exit 1;
+  dir=$exp_dir/nnet/pretrain-${depth}dbn
+  [ ! -d $dir ] && mkdir $dir
+  steps/nnet/pretrain_dbn.sh --rbm-iter 1 --nn-depth $depth $data_fmllr/train $dir || exit 1;
 fi
 
 
 if [ $stage_dbn -le 2 ]; then
 # fine-tuning of DBN parameters
-  ali=exp/tri4a_ali
+  dir=$exp_dir/nnet/${depth}dbn
+  ali=$exp_dir/tri4a_ali
+  ali_dev=$exp_dir/tri4a_dev_ali
+  feature_transform=$exp_dir/nnet/pretrain-${depth}dbn/final.feature_transform
+  dbn=$exp_dir/nnet/pretrain-${depth}dbn/$depth.dbn
 
-  # Train
   if [ "$data_dev" == "" ]; then
-    steps/nnet/train.sh --feature-transform $exp_dir/nnet/pretrain-${depth}dbn/final.feature_transform \
-      --dbn $exp_dir/nnet/pretrain-${depth}dbn/$depth.dbn --hid-layers 0 --learn-rate $learn_rate \
-      $data_fmllr/train_tr90 $data_fmllr/train_cv10 data/lang $exp_dir/tri4a_ali $exp_dir/tri4a_ali $exp_dir/nnet/${depth}dbn
+    steps/nnet/train.sh --feature-transform $feature_transform --dbn $dbn --hid-layers 0 --learn-rate $learn_rate \
+      $data_fmllr/train_tr90 $data_fmllr/train_cv10 data/lang $ali $ali $dir
   else
-    steps/nnet/train.sh --feature-transform $exp_dir/nnet/pretrain-${depth}dbn/final.feature_transform \
-      --dbn $exp_dir/nnet/pretrain-${depth}dbn/$depth.dbn --hid-layers 0 --learn-rate $learn_rate \
-      $data_fmllr/train $data_fmllr/dev data/lang $exp_dir/tri4a_ali $exp_dir/tri4a_dev_ali $exp_dir/nnet/${depth}dbn
+    steps/nnet/train.sh --feature-transform $feature_transform --dbn $dbn --hid-layers 0 --learn-rate $learn_rate \
+      $data_fmllr/train $data_fmllr/dev data/lang $ali $ali_dev $dir
   fi
 
   #Decoder
