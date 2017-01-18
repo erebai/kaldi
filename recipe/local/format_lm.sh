@@ -5,7 +5,6 @@
 # begin configuration section
 src_dir=data/lang
 lm_dir=data/local/lm
-lm_order=3
 liaison=false
 # end configuration section
 
@@ -32,14 +31,14 @@ if [ ! -f $src_dir/words.txt ]; then
   exit 1;
 fi
 
-for file in $lm_dir/*.$lm_order.gz; do
-  lm_suffix=$(echo $file | sed -e "s/\.$lm_order.gz//" -e 's/data\/local\/lm\///')
+for file in $lm_dir/*.*.gz; do
+  lm_suffix=$(echo $file | sed -e "s/\..\.gz//" -e 's/data\/local\/lm\///')
   test=${src_dir}_test_${lm_suffix}
   echo $test
   [ -d $test ] && rm -r $test
   mkdir -p $test
   cp -r ${src_dir}/* $test
-  gunzip -c $lm_dir/$lm_suffix.$lm_order.gz | \
+  gunzip -c $file | \
   arpa2fst --disambig-symbol=#0 \
 	   --read-symbol-table=$test/words.txt - $test/G.fst
   fstisstochastic $test/G.fst 

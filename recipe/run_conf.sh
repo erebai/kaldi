@@ -122,6 +122,7 @@ echo ===========================================================================
 	  echo "$0: Preparing data as Kaldi data directories"
 	  [ "$data_train" == "" ] && echo "$0: Error= No dataset is defined in the configuration !!!" && exit 1
 	  #Preparing Train data
+	  rm -rf data
 	  valid_data=""
 	  i=1
 	  for dir in $data_train; do
@@ -141,7 +142,7 @@ echo ===========================================================================
 	  else
 	    echo "$0: Error= No Train data is processed !!!"; exit 1
 	  fi
-
+          rm -rf $tgt_dir
 	  #Preparing Dev data
 	  if [ "$data_dev" != "" ]; then
 	    $data_dev/data_prepare.sh --path $data_dev --apply_adaptation $adapt --sample_rate $sample_rate $data_dev data/dev
@@ -198,7 +199,7 @@ echo ===========================================================================
 	  t=0
 	  for lm in ${lms_function[*]}; do
 	    local/lm_prep.sh \
-		--text $train_text
+		--text $train_text \
 		--lm_system $lm \
 		--order ${lms_order[$t]} \
 		--lexicon data/local/dict/lexicon.txt \
@@ -212,7 +213,7 @@ echo ===========================================================================
 	  ## Optional Perplexity of the built models
 	  echo "$0: evaluating the language model performance on the test data"
 	  t=0
-	  rm $perplexity_file
+	  rm -f $perplexity_file
 	  for lm in ${lms[*]}; do
 	    local/compute_perplexity.sh --order ${lms_order[$t]} --text data/test $lm >> $perplexity_file
 	    t=$((t+1))
@@ -309,7 +310,7 @@ echo ===========================================================================
 	    $numLeavesTri1 $numGaussTri1 $train_dir data/lang $exp_dir/mono_ali $exp_dir/tri1
 
 	  #Decoder
-	  for lm in ${lms[*]}; do
+	  for lm in ${decode_lms[*]}; do
 	    utils/mkgraph.sh data/lang_test_$lm $exp_dir/tri1 $exp_dir/tri1/graph_$lm
 	    for d in $data_decode; do
 	      steps/decode.sh --config $decode_conf --nj $decode_nj $exp_dir/tri1/graph_$lm data/$d $exp_dir/tri1/decode_${d}_$lm
@@ -333,7 +334,7 @@ echo ===========================================================================
 	    $numLeavesMLLT $numGaussMLLT $train_dir data/lang $exp_dir/tri1_ali $exp_dir/tri2b
 
 	  #Decoder
-	  for lm in ${lms[*]}; do
+	  for lm in ${decode_lms[*]}; do
 	    utils/mkgraph.sh data/lang_test_$lm $exp_dir/tri2b $exp_dir/tri2b/graph_$lm
 	    for d in $data_decode; do
 	      steps/decode.sh --config $decode_conf --nj $decode_nj $exp_dir/tri2b/graph_$lm data/$d $exp_dir/tri2b/decode_${d}_$lm
@@ -355,7 +356,7 @@ echo ===========================================================================
 	  steps/train_sat.sh $numLeavesSAT $numGaussSAT $train_dir data/lang $exp_dir/tri2b_ali $exp_dir/tri4a
 
 	  #Decoder
-	  for lm in ${lms[*]}; do
+	  for lm in ${decode_lms[*]}; do
 	    utils/mkgraph.sh data/lang_test_$lm $exp_dir/tri4a $exp_dir/tri4a/graph_$lm
 	    for d in $data_decode; do
 	      steps/decode_fmllr.sh --config $decode_conf --nj $decode_nj $exp_dir/tri4a/graph_$lm data/$d $exp_dir/tri4a/decode_${d}_$lm
@@ -386,7 +387,7 @@ echo ===========================================================================
 	  steps/train_ubm.sh $numGaussUBM $train_dir data/lang $exp_dir/tri4a_ali $exp_dir/ubm
 	  steps/train_sgmm2.sh $numLeavesSGMM $numGaussSGMM $train_dir data/lang $exp_dir/tri4a_ali $exp_dir/ubm/final.ubm $exp_dir/sgmm2
 	  #Decoder
-	  for lm in ${lms[*]}; do
+	  for lm in ${decode_lms[*]}; do
 	    utils/mkgraph.sh data/lang_test_$lm $exp_dir/sgmm2 $exp_dir/sgmm2/graph_$lm
 	    for d in $data_decode; do
 	      steps/decode_sgmm2.sh --config $decode_conf --nj $decode_nj --transform-dir $exp_dir/tri4a/decode_${d}_$lm \

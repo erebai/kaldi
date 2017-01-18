@@ -104,7 +104,7 @@ fi
 
 if [ $stage -le 4 ]; then
   #Decoder
-  for lm in ${lms[*]}; do
+  for lm in ${decode_lms[*]}; do
     steps/nnet2/decode.sh --config $decode_dnn_conf --nj $decode_nj --feat-type raw \
       $gmm/graph_$lm $dataTe $expbnf/decode_test_$lm
   done

@@ -50,7 +50,7 @@ if [ $stage_dbn -le 2 ]; then
   fi
 
   #Decoder
-  for lm in ${lms[*]}; do
+  for lm in ${decode_lms[*]}; do
     for d in $data_decode; do
       steps/nnet/decode.sh --config $decode_dnn_conf --nj $decode_nj \
         $exp_dir/tri4a/graph_$lm $data_fmllr/$d $exp_dir/nnet/${depth}dbn/decode_${d}_$lm

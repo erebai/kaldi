@@ -32,7 +32,7 @@ if [ ! -f $dir/final.mdl ]; then
 fi
 
 #Decoder
-for lm in ${lms[*]}; do
+for lm in ${decode_lms[*]}; do
   for d in $data_decode; do
     steps/nnet2/decode.sh --config $decode_dnn_conf --nj $decode_nj --transform-dir $exp_dir/tri4a/decode_${d}_$lm \
      $exp_dir/tri4a/graph_$lm data/$d $dir/decode_${d}_$lm
