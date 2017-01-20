@@ -3,7 +3,6 @@
 # Copyright (C) 2016, Linagora, Ilyes Rebai
 
 # Begin configuration section.
-stage_dbn=0
 # End configuration section.
 
 
@@ -17,7 +16,7 @@ if [ $stage_dbn -le 0 ]; then
 
   for data in $data_decode; do
     steps/nnet/make_fmllr_feats.sh --nj $decode_nj \
-      --transform-dir $exp_dir/tri4a/decode_dev_IRSTLM \
+      --transform-dir $exp_dir/tri4a_${data}_ali \
       $data_fmllr/$data data/$data $exp_dir/tri4a $data_fmllr/$data/{log,data}
   done
 
