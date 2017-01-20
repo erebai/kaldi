@@ -207,6 +207,8 @@ echo ===========================================================================
 		--lms_lambdas "${lms_lambda[$t]}"
 	    t=$((t + 1))
 	  done
+	  
+	  [ $one_stage == true ] && exit 1
 	fi
 	
 	if [ $preparation_stage -le 6 ]; then
