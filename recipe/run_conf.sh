@@ -4,107 +4,7 @@
 # INSTALL KALDI_LM; SRILM; IRSTLM
 
 # begin configuration section
-data_preparation=true
-preparation_stage=0
-training_decoding=false
-stage_tr=0
-one_stage=true
-#==================< DATA PREPARATION >================
-adapt=false # Set this to true if you want to make the data as the vocabulary file,
-	    # example: dès que (original text) => dès_que (vocabulary word)
-liaison=true # Set this to true if you want to makes lexicon while taking into account liaison for French language
-sample_rate=16000
-#set the path to the training, development, and evaluation folders
-  data_train="../recipe/speech_data/train ../../Fr/h1/Corpus ../../Fr/h2/ACSYNT" # directory which contains the training dataset
-		     # To use multiple data source for training, use space " " as a delimiter between each dataset
-  data_dev="../recipe/speech_data/dev"
-  data_test="../recipe/speech_data/test"
-  tgt_dir=data_dir # The folder in which the generated files will be saved
-#set dictionnary path
-sequiture_model=conf/model-2
-lexicon=lexicon
-#set the language model parameters
-lms_function=( IRSTLM SRILM KALDI MERGING )
-lms_order=( 3 3 3 3 )
-lms=( IRSTLM SRILM KALDI "IRSTLM;SRILM" )
-lms_lambda=( 1 1 1 "1;.3" )
-train_text=data/local/dict/corpus # LM Training file. It's the training transcription by default
-perplexity_file=perplexity.txt
-
-#NOTE: if you would like to use a pre-compiled Language Model, just pute the file in the lm directory: data/local/lm/
-
-
-#set the kaldi language directories parameters
-sil_prob=0.3 # silence probability used while creating l.fst (transition probability from silence state to the loop state)
-
-#set feature type: mfcc, plp, or fbank
-feat_type=mfcc
-feat_nj=10
-#==================< DATA PREPARATION END >================
-
-#==================< TRAINING AND EVALUATION >================
-#Global parameters
-exp_dir=exp
-train_nj=30
-decode_nj=5
-decode_lms=( IRSTLM SRILM KALDI "IRSTLM.SRILM" )
-decode_conf=conf/decode.config
-decode_dnn_conf=conf/decode_dnn.config
-save_results_file=RESULTS.txt
-context_opts="--context-width=3 --central-position=1" # triphone context, e.g. "--context-width 5 --central-position 2" for quinphone.
-sub_train_data=500
-#set mono parameters
-sub_data=200
-#set Tri1 parameters
-numLeavesTri1=2500
-numGaussTri1=15000
-#set LDA-MLLR parameters
-numLeavesMLLT=2500
-numGaussMLLT=15000
-sliceTri2="--left-context=3 --right-context=3"
-#set SAT-fmllr parameters
-numLeavesSAT=2500
-numGaussSAT=15000
-#set SGMM2 parameters
-numGaussUBM=400
-numLeavesSGMM=7000
-numGaussSGMM=9000
-#set DNN parameters
-DNN_technique=dnn #Define the neural net technique: dnn|dbn|autoencoder
-# get more information about how to set DNN nnet2 parameters: http://kaldi-asr.org/doc/dnn2.html
-
-############### dnn configuration ################
-use_gpu=true
-train_stage=-100
-
-if $use_gpu; then
-  num_threads=1
-  parallel_opts="--gpu 1"
-  minibatch_size=512
-else
-  # with just 4 jobs this might be a little slow.
-  num_threads=16
-  parallel_opts="--num-threads $num_threads" 
-  minibatch_size=128
-fi
-
-samples_per_iter=400000
-initial_learning_rate=0.01
-final_learning_rate=0.001
-mix_up=8000
-
-hidden_function=Pnorm # The implemented functions are: Pnorm, Tanh, Sigmoid, RectifiedLinear 
-num_hidden_layers=5
-hidden_layer_dim=128 #used with Tanh, Sigmoid, RectifiedLinear activation function
-pnorm_input_dim=2000 #used with pnorm function
-pnorm_output_dim=400 #used with pnorm function
-
-############### dbm configuration ################
-data_fmllr=data-fmllr
-depth=7
-learn_rate=0.008
-#==================< TRAINING AND EVALUATION END >================
-
+. ./conf/run.conf
 # end configuration section
 . ./path.sh
 
@@ -146,10 +46,8 @@ echo ===========================================================================
 	  #Preparing Dev data
 	  if [ "$data_dev" != "" ]; then
 	    $data_dev/data_prepare.sh --path $data_dev --apply_adaptation $adapt --sample_rate $sample_rate $data_dev data/dev
-	    data_decode="dev test"
 	  else
 	    echo "$0: WARNING= No Dev data is defined in the configuration !!!"
-	    data_decode="test"
 	  fi
 	  #Preparing Test data
 	  [ "$data_test" == "" ] && echo "$0: Error= No Test data is processed !!!" && exit 1
@@ -217,7 +115,7 @@ echo ===========================================================================
 	  t=0
 	  rm -f $perplexity_file
 	  for lm in ${lms[*]}; do
-	    local/compute_perplexity.sh --order ${lms_order[$t]} --text data/test $lm >> $perplexity_file
+	    local/compute_perplexity.sh --order ${lms_order[$t]} --text data/test/text $lm >> $perplexity_file
 	    t=$((t+1))
 	  done
 
@@ -267,7 +165,7 @@ echo ===========================================================================
 echo " TRAINING AND EVALUATION "
 echo ============================================================================
 
-	if [ "$sub_train_data" != "" ]; then
+	if [ "$sub_train_data" != "" ] && [ ! -d data/train_$sub_train_data ]; then
 	  utils/subset_data_dir.sh data/train $sub_train_data data/train_$sub_train_data
 	  train_dir=data/train_$sub_train_data
 	else
@@ -287,7 +185,7 @@ echo ===========================================================================
 	  fi
 
 	  #Decoder
-	  for lm in ${lms[*]}; do
+	  for lm in ${decode_lms[*]}; do
 	    utils/mkgraph.sh --mono data/lang_test_$lm $exp_dir/mono $exp_dir/mono/graph_$lm
 	    for d in $data_decode; do
 	      steps/decode.sh --config $decode_conf --nj $decode_nj $exp_dir/mono/graph_$lm data/$d $exp_dir/mono/decode_${d}_$lm
@@ -308,7 +206,7 @@ echo ===========================================================================
 	  #Align the train data using mono-phone model
 	  steps/align_si.sh --nj $train_nj $train_dir data/lang $exp_dir/mono $exp_dir/mono_ali
 	  #Train Deltas + Delta-Deltas model on top of monophone model
-	  steps/train_deltas.sh --context-opts $context_opts \
+	  steps/train_deltas.sh --context-opts "$context_opts" \
 	    $numLeavesTri1 $numGaussTri1 $train_dir data/lang $exp_dir/mono_ali $exp_dir/tri1
 
 	  #Decoder
@@ -332,7 +230,7 @@ echo ===========================================================================
 	  #Align the train data using tri1 model
 	  steps/align_si.sh --nj $train_nj $train_dir data/lang $exp_dir/tri1 $exp_dir/tri1_ali
 	  #Train LDA + MLLT model based on tri1_ali
-	  steps/train_lda_mllt.sh --context-opts $context_opts --splice-opts "$sliceTri2" \
+	  steps/train_lda_mllt.sh --context-opts "$context_opts" --splice-opts "$sliceTri2" \
 	    $numLeavesMLLT $numGaussMLLT $train_dir data/lang $exp_dir/tri1_ali $exp_dir/tri2b
 
 	  #Decoder
@@ -372,19 +270,22 @@ echo ===========================================================================
 	fi
 
 	if [ $stage_tr -le 5 ]; then
-	  #Align the train data using tri4a model
+	  echo ============================================================================
+	  echo " Align All data using fmllr-GMM model "
+	  echo ============================================================================
+	  #Align the train data
 	  steps/align_fmllr.sh --nj $train_nj $train_dir data/lang $exp_dir/tri4a $exp_dir/tri4a_ali
-	  [ "$data_dev" != "" ] && steps/align_fmllr.sh --nj $train_nj data/dev data/lang $exp_dir/tri4a $exp_dir/tri4a_dev_ali
-
+	  for data in $data_decode; do
+	    steps/align_fmllr.sh --nj $decode_nj data/$data data/lang $exp_dir/tri4a $exp_dir/tri4a_${data}_ali
+	  done
+	  
 	  [ $one_stage == true ] && exit 1
 	fi
 
-	if [ $stage_tr -le 5 ]; then
+	if [ $stage_tr -le 6 ]; then
 	  echo ============================================================================
 	  echo " SGMM : SGMM Training & Decoding "
 	  echo ============================================================================
-	  #Align the train data using tri4a model
-	  steps/align_fmllr.sh --nj $train_nj $train_dir data/lang $exp_dir/tri4a $exp_dir/tri4a_ali
 	  #Train SGMM model based on the GMM SAT model
 	  steps/train_ubm.sh $numGaussUBM $train_dir data/lang $exp_dir/tri4a_ali $exp_dir/ubm
 	  steps/train_sgmm2.sh $numLeavesSGMM $numGaussSGMM $train_dir data/lang $exp_dir/tri4a_ali $exp_dir/ubm/final.ubm $exp_dir/sgmm2
@@ -392,7 +293,7 @@ echo ===========================================================================
 	  for lm in ${decode_lms[*]}; do
 	    utils/mkgraph.sh data/lang_test_$lm $exp_dir/sgmm2 $exp_dir/sgmm2/graph_$lm
 	    for d in $data_decode; do
-	      steps/decode_sgmm2.sh --config $decode_conf --nj $decode_nj --transform-dir $exp_dir/tri4a/decode_${d}_$lm \
+	      steps/decode_sgmm2.sh --config $decode_conf --nj $decode_nj --transform-dir $exp_dir/tri4a_${d}_ali \
 	        $exp_dir/sgmm2/graph_$lm data/$d $exp_dir/sgmm2/decode_${d}_$lm
 	    done
 	  done
@@ -403,11 +304,11 @@ echo ===========================================================================
 	  [ $one_stage == true ] && exit 1
 	fi
 
-	if [ $stage_tr -le 6 ]; then
+	if [ $stage_tr -le 7 ]; then
 	  echo ============================================================================
 	  echo "                    DNN Training & Decoding                        	"
 	  echo ============================================================================
-	  case "$DNN_implementation" in 
+	  case "$DNN_technique" in 
    		"dbn") local/nnet/run_dbn.sh
 		;;
    		"dnn") local/nnet2/run_dnn.sh
@@ -424,7 +325,7 @@ echo ===========================================================================
 	fi
 
 
-	if [ $stage_tr -le 6 ]; then
+	if [ $stage_tr -le 8 ]; then
 	  echo ============================================================================
 	  echo " EVALUATION RESULTS "
 	  echo ============================================================================
