@@ -5,7 +5,7 @@
 # begin configuration section
 dict_dir=data/local/dict # destination dictionary directory
 lm_dir=data/local/lm # destination dictionary directory
-text=data/test # training data file
+text=data/test/text # training data file
 order=3 # Language model order
 # end configuration section
 
@@ -28,6 +28,6 @@ lm=$(echo $1 | sed "s/;/./g")
 
 echo "$0: Computing perplexity using $lm language model"
 corpusfile=$dict_dir/corpus_evaluation
-cut -f2- -d' ' < $text/text | sed -e 's:[ ]\+: :g' | sort -u > $corpusfile
+cut -f2- -d' ' < $text | sed -e 's:[ ]\+: :g' | sort -u > $corpusfile
 ngram -ppl $corpusfile -lm $lm_dir/$lm.$order.gz
 
